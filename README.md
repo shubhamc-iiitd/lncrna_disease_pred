@@ -92,6 +92,64 @@ Doing LOO on every link is slow for a big graph. This repo includes **LOO on a r
 **2. Are our top “new” guesses just chasing what is already over-studied?**  
 Some lncRNAs and diseases appear everywhere in the literature (**hubs**). Cancer-style entries also dominate many databases. Take the **highest-scoring pairs that are *not* in the database**. If those pairs **pile into the same disease buckets** (or the same super-connected nodes) as the **training links**, the model may mostly be learning **“what gets studied a lot”**—**annotation bias** and **popularity**—not a new biological rule. If the pattern **looks different**, that is a hint the model is **not only** copying the obvious skew (but **be careful**: real biology also clusters, and our “categories” are **rough keyword labels**, not a full disease ontology).  
 
+### What the ingested graph actually looks like
+
+The numbers below are for the **default full human ingest** in [`data/`](data/) (LncRNADisease v3.0 after [`scripts/fetch_lncrnadisease_v30.py`](scripts/fetch_lncrnadisease_v30.py) + [`scripts/ingest_lncrnadisease_v30.py`](scripts/ingest_lncrnadisease_v30.py)). They explain **where hub bias comes from** in this assignment: the graph is **sparse for most nodes** but **heavy-tailed** for a few.
+
+| | Count |
+|--|--:|
+| lncRNA nodes | 5,842 |
+| Disease nodes | 440 |
+| Known positive edges | 10,518 |
+| lncRNA degree (links to diseases): **median** / **max** | 1 / 97 |
+| Disease degree (links to lncRNAs): **median** / **max** | 2 / 1,264 |
+
+**lncRNAs with the most disease associations** (these are the usual heavily studied transcripts; any co-occurrence or graph model “sees” them constantly):
+
+| Rank | # diseases | Name |
+|-----:|-----------:|------|
+| 1 | 97 | MALAT1 |
+| 2 | 92 | NEAT1 |
+| 3 | 92 | H19 |
+| 4 | 64 | PVT1 |
+| 5 | 64 | GAS5 |
+| 6 | 57 | MEG3 |
+| 7 | 54 | HOTAIR |
+| 8 | 53 | TUG1 |
+| 9 | 48 | CDKN2B-AS1 |
+| 10 | 48 | XIST |
+| 11 | 44 | UCA1 |
+| 12 | 42 | ZFAS1 |
+| 13 | 41 | SNHG1 |
+| 14 | 35 | SNHG16 |
+| 15 | 33 | MIAT |
+
+**Diseases with the most lncRNA associations** (a few rows absorb a large share of edges; **Neoplasm** dominates this tail):
+
+| Rank | # lncRNAs | Disease | Category (keyword) |
+|-----:|----------:|---------|---------------------|
+| 1 | 1,264 | Esophageal Squamous Cell Carcinoma | Neoplasm |
+| 2 | 859 | Atrial Fibrillation | Cardiovascular |
+| 3 | 523 | Stomach Neoplasms | Neoplasm |
+| 4 | 441 | Carcinoma, Hepatocellular | Neoplasm |
+| 5 | 416 | Colorectal Neoplasms | Neoplasm |
+| 6 | 390 | Breast Neoplasms | Neoplasm |
+| 7 | 389 | Depression | Other |
+| 8 | 351 | Osteoarthritis | Immune_inflammatory |
+| 9 | 346 | Carcinoma, Non-Small-Cell Lung | Neoplasm |
+| 10 | 277 | Pterygium | Other |
+| 11 | 241 | Uterine Cervical Neoplasms | Neoplasm |
+| 12 | 234 | Glioma | Neoplasm |
+| 13 | 222 | Squamous Cell Carcinoma of Head and Neck | Neoplasm |
+| 14 | 219 | Osteosarcoma | Neoplasm |
+| 15 | 199 | Adenocarcinoma of Lung | Neoplasm |
+
+Stable internal IDs for these diseases live in [`data/diseases.csv`](data/diseases.csv). To recompute degree-ranked lists from your own `data/`, run:
+
+```bash
+python scripts/list_hub_entities.py --data-dir data --top 25
+```
+
 Scripts and plots for this second check are in [Biology vs annotation bias (scripts)](#biology-vs-annotation-bias-scripts).
 
 **In short:** the **LOO / hold-out curves** ask whether **the graph supports prediction**. The **category and hub checks** ask whether **top guesses mirror how lopsided the database is**. You want both: neither answer is final on its own, but together they separate **“structure in the data”** from **“bias in how the data was collected.”**
@@ -189,6 +247,7 @@ python scripts/hub_degree_audit.py --data-dir data --top-k 3000
 | `scripts/eval_loo_link_prediction.py` | Hold-out / LOO / ranking |
 | `scripts/train_lightgcn_full.py` | Full-graph LightGCN → checkpoint |
 | `scripts/category_bias_audit.py`, `scripts/hub_degree_audit.py` | Bias audits |
+| `scripts/list_hub_entities.py` | Print top-degree lncRNAs / diseases (reproduce README hub tables) |
 | `examples/minimal_data/` | Tiny bundled graph |
 | `figures/` | ROC/PR and category plots |
 | `checkpoints/` | Trained `.pt` (default gitignored; keep `checkpoints/.gitkeep`) |
