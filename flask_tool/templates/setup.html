@@ -12,13 +12,21 @@
     <p>No association tables found in <code>{{ missing_dir }}</code>.</p>
   </header>
   <section class="card">
-    <h2>Recommended — full LncRNADisease v3.0 graph under <code>data/</code></h2>
+    <h2>Easiest — one command (download, ingest, train if needed)</h2>
+    <pre>cd {{ root }}
+pip install -r requirements.txt
+python run_flask.py --auto-setup</pre>
+    <p>If <code>data/associations.csv</code> is missing, this fetches LncRNADisease v3.0 and builds the CSVs. If <code>checkpoints/lightgcn_full.pt</code> is missing and PyTorch is installed, it trains LightGCN (can take several minutes). Same behavior: <code>export LNC_AUTO_SETUP=1</code> then <code>python run_flask.py</code>.</p>
+    <p>Data-only (no training): <code>python run_flask.py --auto-setup --skip-train</code></p>
+  </section>
+  <section class="card">
+    <h2>Manual — full LncRNADisease v3.0 graph under <code>data/</code></h2>
     <pre>cd {{ root }}
 python scripts/fetch_lncrnadisease_v30.py
 python scripts/ingest_lncrnadisease_v30.py
+python scripts/train_lightgcn_full.py --data-dir data
 python run_flask.py</pre>
     <p>The app uses <code>data/</code> automatically when those CSVs exist (no env var needed).</p>
-    <p>Optional: train <strong>LightGCN</strong> on the full graph and save <code>checkpoints/lightgcn_full.pt</code> so the portal uses learned joint embeddings: <code>python scripts/train_lightgcn_full.py --data-dir data</code></p>
   </section>
   <section class="card">
     <h2>Fallback — bundled demo</h2>

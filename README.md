@@ -22,6 +22,8 @@ This project turns **[LncRNADisease v3.0](http://www.rnanut.net/lncrnadisease/)*
 
 ## Quick start
 
+**Easiest (download + ingest + train LightGCN only if something is missing):**
+
 ```bash
 git clone https://github.com/shubhamc-iiitd/lncrna_disease_pred.git
 cd lncrna_disease_pred
@@ -30,19 +32,23 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Build the human lncRNA graph from v3.0 (writes ./data/)
+python run_flask.py --auto-setup
+```
+
+`--auto-setup` checks **`data/associations.csv`**: if absent, it runs **`scripts/fetch_lncrnadisease_v30.py`** and **`scripts/ingest_lncrnadisease_v30.py`**. It then checks **`checkpoints/lightgcn_full.pt`**: if absent and **PyTorch** is installed, it runs **`scripts/train_lightgcn_full.py`** (default **250** epochs; several minutes on CPU). If PyTorch is missing, the app still starts with the **hybrid** ranker. Equivalent: **`export LNC_AUTO_SETUP=1`** before **`python run_flask.py`**. Data only, no training: **`--auto-setup --skip-train`**.
+
+**Manual steps** (same outcome as a fresh clone after the commands above):
+
+```bash
 python scripts/fetch_lncrnadisease_v30.py
 python scripts/ingest_lncrnadisease_v30.py
-
-# Optional: train LightGCN on the full graph for the Flask UI (~minutes on CPU)
 python scripts/train_lightgcn_full.py --data-dir data --epochs 250 --dim 64 --layers 3
-
 python run_flask.py
 ```
 
 Open **http://127.0.0.1:5000**. If `checkpoints/lightgcn_full.pt` exists, rankings use **LightGCN**; otherwise the app uses a **hybrid SVD + co-occurrence** baseline.
 
-**Minimal demo without ingest:** the app falls back to `examples/minimal_data/` when `./data/associations.csv` is missing.
+**Minimal demo without ingest:** the app falls back to `examples/minimal_data/` when `./data/associations.csv` is missing (unless you point **`LNC_DATA_DIR`** at a folder that already has the CSVs).
 
 ---
 
@@ -260,11 +266,14 @@ python scripts/hub_degree_audit.py --data-dir data --top-k 3000
 | Entry | Command |
 |-------|---------|
 | Dev server | `python run_flask.py` |
+| One-shot setup + server | `python run_flask.py --auto-setup` |
 | Flask CLI | `export PYTHONPATH="$PWD" && flask --app wsgi run --debug` |
 
-**Data directory:** uses `./data/` when `data/associations.csv` exists; else `examples/minimal_data/`. Override with **`LNC_DATA_DIR`**.
+**Data directory:** uses `./data/` when `data/associations.csv` exists; else `examples/minimal_data/`. Override with **`LNC_DATA_DIR`** (auto-setup writes to that folder when set, otherwise `./data/`).
 
 **LightGCN checkpoint:** if **`checkpoints/lightgcn_full.pt`** exists, it is loaded by default. Set **`LNC_USE_LIGHTGCN=0`** to force the hybrid ranker. **`LNC_LIGHTGCN_CKPT`**: custom path. **`LNC_TORCH_DEVICE`**: e.g. `cuda` or `cpu`.
+
+**Automatic fetch / ingest / train:** **`LNC_AUTO_SETUP=1`** runs the same pipeline as **`--auto-setup`** when using **`wsgi.py`** (e.g. `flask --app wsgi run`). Optional: **`LNC_AUTO_SETUP_SKIP_TRAIN=1`** (data only), **`LNC_AUTO_TRAIN_EPOCHS`**, **`LNC_AUTO_DIM`**, **`LNC_AUTO_LAYERS`**, **`LNC_AUTO_DEVICE`** (falls back to **`LNC_TORCH_DEVICE`** then **`cpu`**). Implemented in [`src/setup_pipeline.py`](src/setup_pipeline.py).
 
 ---
 
@@ -274,6 +283,7 @@ python scripts/hub_degree_audit.py --data-dir data --top-k 3000
 |------|------|
 | `run_flask.py`, `wsgi.py` | Application entrypoints |
 | `flask_tool/` | Flask app, templates, static assets |
+| `src/setup_pipeline.py` | Optional `--auto-setup` / `LNC_AUTO_SETUP`: fetch, ingest, train if missing |
 | `src/dataio.py` | CSV → sparse `Y` |
 | `src/lightgcn_bipartite.py` | LightGCN train / checkpoint I/O |
 | `src/learned_edge_models.py`, `src/models_mf.py`, `src/models_gnn.py` | MF / tiny GNN training |
