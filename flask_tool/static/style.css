@@ -21,6 +21,12 @@ header h1 {
   color: #444;
 }
 
+.model-tag {
+  font-size: 0.85rem;
+  color: #1d3557;
+  font-weight: 600;
+}
+
 .note {
   margin-top: 0.5rem;
 }

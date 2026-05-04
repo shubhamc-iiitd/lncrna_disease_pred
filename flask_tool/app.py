@@ -7,10 +7,19 @@ from pathlib import Path
 import numpy as np
 from flask import Flask, jsonify, render_template, request
 
-from .ranker import LatentRanker
+from .ranker import HybridLinkScorer
 
 # Repo root (parent of flask_tool/)
 ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_LIGHTGCN_CKPT = ROOT / "checkpoints" / "lightgcn_full.pt"
+
+
+def _default_data_dir() -> Path:
+    """Prefer ingested LncRNADisease v3 tables under ./data; fallback to bundled demo."""
+    full = ROOT / "data"
+    if (full / "associations.csv").is_file():
+        return full
+    return ROOT / "examples" / "minimal_data"
 
 
 def create_app(data_dir: Path | None = None) -> Flask:
@@ -20,10 +29,13 @@ def create_app(data_dir: Path | None = None) -> Flask:
         static_folder=str(Path(__file__).parent / "static"),
     )
 
-    data_path = Path(data_dir or os.environ.get("LNC_DATA_DIR", ROOT / "examples" / "minimal_data"))
+    env_raw = os.environ.get("LNC_DATA_DIR")
+    env_dir = Path(env_raw) if env_raw else None
+    data_path = Path(data_dir or env_dir or _default_data_dir())
     app.config["DATA_DIR"] = data_path
     app.config["RANKER"] = None
     app.config["BIPARTITE"] = None
+    app.config["MODEL_LABEL"] = ""
 
     def _ensure_loaded() -> tuple[bool, str | None]:
         if app.config["BIPARTITE"] is not None:
@@ -35,7 +47,26 @@ def create_app(data_dir: Path | None = None) -> Flask:
 
         bp = load_bipartite(data_path)
         app.config["BIPARTITE"] = bp
-        app.config["RANKER"] = LatentRanker.fit(bp.Y, n_components=32)
+
+        ckpt_env = os.environ.get("LNC_LIGHTGCN_CKPT")
+        ckpt = Path(ckpt_env) if ckpt_env else DEFAULT_LIGHTGCN_CKPT
+        use_lg = os.environ.get("LNC_USE_LIGHTGCN", "1").lower() not in ("0", "false", "no")
+
+        if use_lg and ckpt.is_file():
+            try:
+                from src.learned_edge_models import MatrixScorer
+                from src.lightgcn_bipartite import load_lightgcn_for_inference
+
+                dev = os.environ.get("LNC_TORCH_DEVICE", "cpu")
+                S, _, _ = load_lightgcn_for_inference(bp.Y.tocsr(), ckpt, device=dev)
+                app.config["RANKER"] = MatrixScorer(S)
+                app.config["MODEL_LABEL"] = f"Bipartite LightGCN (checkpoint: {ckpt.name})"
+            except Exception:
+                app.config["RANKER"] = HybridLinkScorer.fit(bp.Y, n_components=32)
+                app.config["MODEL_LABEL"] = "Hybrid SVD + co-occurrence (LightGCN load failed)"
+        else:
+            app.config["RANKER"] = HybridLinkScorer.fit(bp.Y, n_components=32)
+            app.config["MODEL_LABEL"] = "Hybrid SVD + co-occurrence"
         return True, None
 
     @app.route("/")
@@ -64,6 +95,7 @@ def create_app(data_dir: Path | None = None) -> Flask:
             n_edges=int(bp.Y.nnz),
             diseases=diseases,
             data_dir=str(data_path),
+            model_label=app.config.get("MODEL_LABEL", ""),
         )
 
     @app.route("/api/diseases")

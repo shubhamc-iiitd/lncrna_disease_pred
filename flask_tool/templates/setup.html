@@ -12,16 +12,17 @@
     <p>No association tables found in <code>{{ missing_dir }}</code>.</p>
   </header>
   <section class="card">
-    <h2>Option A — bundled demo (default after clone)</h2>
-    <p>Ensure the folder <code>examples/minimal_data/</code> exists in the repository and contains <code>associations.csv</code>, <code>diseases.csv</code>, and <code>lncrnas.csv</code>.</p>
-  </section>
-  <section class="card">
-    <h2>Option B — LncRNADisease v3.0</h2>
+    <h2>Recommended — full LncRNADisease v3.0 graph under <code>data/</code></h2>
     <pre>cd {{ root }}
 python scripts/fetch_lncrnadisease_v30.py
 python scripts/ingest_lncrnadisease_v30.py
-export LNC_DATA_DIR={{ root }}/data
 python run_flask.py</pre>
+    <p>The app uses <code>data/</code> automatically when those CSVs exist (no env var needed).</p>
+    <p>Optional: train <strong>LightGCN</strong> on the full graph and save <code>checkpoints/lightgcn_full.pt</code> so the portal uses learned joint embeddings: <code>python scripts/train_lightgcn_full.py --data-dir data</code></p>
+  </section>
+  <section class="card">
+    <h2>Fallback — bundled demo</h2>
+    <p>If <code>data/associations.csv</code> is missing, the app falls back to <code>examples/minimal_data/</code>. Or set <code>LNC_DATA_DIR</code> to any folder with the three CSVs.</p>
   </section>
 </body>
 </html>

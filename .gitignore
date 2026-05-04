@@ -22,3 +22,6 @@ data/raw/*.xlsx
 /data/associations.csv
 /data/diseases.csv
 /data/lncrnas.csv
+
+# Trained LightGCN weights (regenerate: python scripts/train_lightgcn_full.py)
+checkpoints/*.pt

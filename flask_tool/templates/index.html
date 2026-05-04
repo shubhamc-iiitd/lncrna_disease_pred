@@ -11,9 +11,14 @@
     <h1>lncRNA–disease candidates</h1>
     <p class="meta">
       {{ n_lnc }} lncRNAs · {{ n_dis }} diseases · {{ n_edges }} edges · data: <code>{{ data_dir }}</code>
+      {% if model_label %}<br><span class="model-tag">{{ model_label }}</span>{% endif %}
     </p>
     <p class="note">
-      Rankings use a truncated SVD factorization of the bipartite graph (exploratory, not a clinical claim).
+      {% if model_label and 'LightGCN' in model_label %}
+      Scores come from <strong>bipartite LightGCN</strong> joint embeddings (dot product in latent space), trained on the full loaded graph when a checkpoint is present; otherwise the app falls back to hybrid SVD+co-occurrence.
+      {% else %}
+      Rankings blend <strong>truncated SVD</strong> with a <strong>co-occurrence (3-path)</strong> score on the bipartite graph (exploratory, not a clinical claim).
+      {% endif %}
       Rows marked <span class="pill known">known</span> are already present in the loaded association table.
     </p>
   </header>
