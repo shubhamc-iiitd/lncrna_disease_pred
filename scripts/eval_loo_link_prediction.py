@@ -17,7 +17,7 @@ Models:
 - ``hybrid`` / ``svd`` — closed-form truncated SVD (+ co-occurrence for hybrid), same spirit as the Flask UI.
 - ``mf`` — **learned** logistic matrix factorization (PyTorch), dot-product embeddings on training edges + negatives.
 - ``gnn`` — **learned** tiny 2-hop bipartite message-passing net (PyTorch), dot scores after propagation.
-- ``lightgcn`` — **bipartite LightGCN** (PyTorch, no PyG): linear propagation on symmetric-normalized \(R\), learn only layer-0 embeddings; dot scores (recommended for joint lncRNA–disease space).
+- ``lightgcn`` — **bipartite LightGCN** (PyTorch, no PyG): linear propagation on symmetric-normalized **R**, learn only layer-0 embeddings; dot scores (recommended for joint lncRNA–disease space).
 
 For ``mf`` / ``gnn`` / ``lightgcn``, **hold-out** is the intended protocol; LOO refits per edge — use small
 ``--loo-epochs-*`` or stay with hold-out.

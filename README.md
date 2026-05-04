@@ -94,16 +94,26 @@ python scripts/eval_loo_link_prediction.py --data-dir data --protocol holdout --
 python scripts/eval_loo_link_prediction.py --data-dir data --protocol holdout --model gnn --epochs-gnn 60 --n-components 32 --out-dir figures
 ```
 
-**Figures committed for the full v3.0 ingest** (same run as below; your numbers may shift slightly if the upstream CSV changes):
+**Re-evaluated hold-out (same split: 85% train / 15% test, seed 42, full v3 ingest).** The old **hybrid (SVD+co-occurrence)** baseline is weak on strict edge masking; **LightGCN** (learned joint embeddings on `Y_train`) recovers held-out links much better:
 
-| Metric | Value (hold-out, hybrid, seed 42) |
-|--------|-------------------------------------|
-| AUROC | 0.427 |
-| AUPR | 0.034 |
+| Model | AUROC | AUPR | MRR | HR@10 | HR@50 |
+|--------|-------|------|-----|-------|-------|
+| Hybrid | 0.427 | 0.034 | 0.007 | 0.3% | 1.7% |
+| **LightGCN** (`dim=64`, `layers=3`, `epochs=120`) | **0.734** | **0.282** | **0.201** | **41%** | **62% |
 
-![Hold-out ROC on full graph](figures/holdout_roc.png)
+*MRR / HR@* are from `--ranking-report`: each test edge \((i,j)\) is ranked among diseases **not** linked to \(i\) in training (~400 candidates per row). PR-AUC is much more informative than ROC under this sparsity.
 
-![Hold-out precision–recall on full graph](figures/holdout_pr.png)
+Hybrid (baseline) ROC/PR:
+
+![Hold-out ROC hybrid](figures/holdout_roc.png)
+
+![Hold-out PR hybrid](figures/holdout_pr.png)
+
+LightGCN ROC/PR (same protocol as table above):
+
+![Hold-out ROC LightGCN](figures/holdout_lightgcn_roc.png)
+
+![Hold-out PR LightGCN](figures/holdout_lightgcn_pr.png)
 
 **Regenerate** (requires **`data/`** from fetch + ingest):
 
@@ -111,7 +121,10 @@ python scripts/eval_loo_link_prediction.py --data-dir data --protocol holdout --
 pip install -r requirements.txt
 python scripts/fetch_lncrnadisease_v30.py   # if needed
 python scripts/ingest_lncrnadisease_v30.py  # if needed
-python scripts/eval_loo_link_prediction.py --data-dir data --protocol holdout --out-dir figures
+python scripts/eval_loo_link_prediction.py --data-dir data --protocol holdout --model hybrid --out-dir figures
+python scripts/eval_loo_link_prediction.py --data-dir data --protocol holdout --model lightgcn \
+  --n-components 64 --lightgcn-layers 3 --epochs-lightgcn 120 --ranking-report \
+  --roc-name holdout_lightgcn_roc.png --pr-name holdout_lightgcn_pr.png --out-dir figures
 ```
 
 **Toy graph only:** `python scripts/eval_loo_link_prediction.py --data-dir examples/minimal_data --protocol holdout --out-dir figures`
@@ -198,7 +211,7 @@ python scripts/ingest_lncrnadisease_v30.py
 | `src/dataio.py` | Load CSVs into a sparse bipartite matrix |
 | `data/` | Default location for ingested v3.0 CSVs (not always committed; see `.gitignore`) |
 | `examples/minimal_data/` | Tiny demo graph if `data/` is missing |
-| `figures/holdout_*.png`, `figures/loo_*.png` | ROC/PR on full graph (hold-out default; LOO subsampled unless you use `--all-loo`) |
+| `figures/holdout_*.png`, `figures/holdout_lightgcn_*.png`, `figures/loo_*.png` | Hold-out ROC/PR (hybrid vs LightGCN); LOO subsampled unless `--all-loo` |
 | `figures/category_novel_enrichment*.png` | Top-novel disease-category mix vs baselines |
 
 ## Push to GitHub
