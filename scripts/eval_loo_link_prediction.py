@@ -7,8 +7,9 @@ model fit on the training edges, then score held-out positives vs random
 same-row negatives. Uses every edge exactly once across train+test (default
 85% / 15% split).
 
-**Optional:** ``--protocol loo`` — leave-one-out (one refit per positive; use
-``--loo-threshold`` to subsample on huge graphs).
+**Optional:** ``--protocol loo`` — leave-one-out (one refit per positive). Use
+``--all-loo`` for **every** positive on the full graph (tractable for hybrid/svd);
+``--loo-threshold`` subsamples LOO for speed (**not** equivalent to full hold-out).
 
 Figures (default names): ``figures/holdout_roc.png``, ``figures/holdout_pr.png``.
 

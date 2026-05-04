@@ -71,26 +71,35 @@ Each lncRNA and each disease gets a **vector of numbers**. A high **dot product*
 | **Tiny GNN** | `--model gnn`, `src/models_gnn.py` | **Neural**; passes messages along the graph for two steps, then scores with a dot product. |
 | **LightGCN** | `--model lightgcn`, `src/lightgcn_bipartite.py` | **Neural**, LightGCN-style: smooth embeddings along links, no heavy MLP. Implemented in **plain PyTorch** (no PyG). Train on the full graph with [`scripts/train_lightgcn_full.py`](scripts/train_lightgcn_full.py) → `checkpoints/lightgcn_full.pt` (not in git by default). |
 
-**One script runs the tests:** [`scripts/eval_loo_link_prediction.py`](scripts/eval_loo_link_prediction.py) — use `--protocol holdout` (default) or `loo`, pick `--model`, and add `--ranking-report` for rank-based metrics.
+**One script runs the tests:** [`scripts/eval_loo_link_prediction.py`](scripts/eval_loo_link_prediction.py) — default **`--protocol holdout`** gives **complete-dataset** train/test coverage of all edges; optional **`loo`** for stricter per-edge checks (see [Evaluation & figures](#evaluation--figures)). Add **`--ranking-report`** for MRR / HR@K on hold-out.
 
 ---
 
 ## The biological question (graph structure vs annotation bias)
 
-We are not chasing one magic accuracy score. We want to know two simpler things:
+This report develops **two lines of evidence**, both on the **full** ingested graph where possible: **(A)** **quantitative recovery** of **masked** edges from the remaining structure (hold-out link prediction), and **(B)** **alignment** of top-scoring **absent** pairs with **hub popularity** and **literature-heavy keyword buckets** compared to random absent pairs and to the positive-edge distribution.
 
-**1. Does the *shape* of the database actually help you guess missing links?**  
-Imagine you **hide one known link**, **retrain** your scorer on what is left, and then ask: “Does the model rank that hidden link **above** random non-links?” **Leave-one-out (LOO)** does exactly that, one link at a time. The **ROC** and **PR** curves summarize how often that works. If the curves look strong, the **connections already in the graph** carry useful signal. If they look flat, the model is **not** finding an easy pattern in this network alone—that can mean biology is messy, the data is noisy, or the model is too simple. It does **not** by itself prove there is “no biology.”  
+### A. Link prediction protocol (hold-out on the complete edge list)
 
-Doing LOO on every link is slow for a big graph. This repo includes **LOO on a random subset** in `figures/loo_roc.png` and `figures/loo_pr.png`. For day-to-day use we also use a **hold-out split** (hide a chunk of links at once), which is faster and tells a similar story—see [Evaluation & figures](#evaluation--figures).
+The **primary** evaluation **shuffles all known edges**, assigns default **85%** to **training** and **15%** to **test**, fits **one** model on the training edges, and scores **every** test edge against random decoys for the same lncRNA. **ROC**, **precision–recall**, and (with `--ranking-report`) **MRR / HR@K** are computed over the **entire test split**. Every positive in `data/associations.csv` sits in **exactly one** of train or test for that run (default seed **42**). Curves and the reference table are in [Evaluation & figures](#evaluation--figures).
 
-<p align="center">
-  <img src="figures/loo_roc.png" alt="Leave-one-out ROC" width="45%" />
-  <img src="figures/loo_pr.png" alt="Leave-one-out PR" width="45%" />
-</p>
+**Leave-one-out (LOO)** removes **one** positive, refits, scores, and repeats. Full coverage requires **`--all-loo`** over **~10.5k** positives; with neural refits per edge that is usually **impractical**, so subsampled LOO is only an auxiliary check. **Hold-out** remains the headline protocol for complete-dataset numbers.
 
-**2. Are our top “new” guesses just chasing what is already over-studied?**  
-Some lncRNAs and diseases appear everywhere in the literature (**hubs**). Cancer-style entries also dominate many databases. Take the **highest-scoring pairs that are *not* in the database**. If those pairs **pile into the same disease buckets** (or the same super-connected nodes) as the **training links**, the model may mostly be learning **“what gets studied a lot”**—**annotation bias** and **popularity**—not a new biological rule. If the pattern **looks different**, that is a hint the model is **not only** copying the obvious skew (but **be careful**: real biology also clusters, and our “categories” are **rough keyword labels**, not a full disease ontology).  
+### Inference from link-prediction results
+
+On the **full** v3 human ingest (**10,518** edges) with the default **85/15** split and seed **42**, the **hybrid** baseline shows **weak** discrimination (AUROC **~0.43**, AUPR **~0.03**) and **negligible ranking** of the true disease among held-out candidates (MRR **~0.007**, HR@10 **~0.3%**, HR@50 **~1.7%**). **Bipartite LightGCN** under the same protocol reaches AUROC **~0.73**, AUPR **~0.28**, MRR **~0.20**, HR@10 **~41%**, and HR@50 **~62%** (64-dim, 3 layers, 120 epochs as in the table below).
+
+**Takeaway:** the **network alone** carries **substantial** edge signal for a suitable **learned** joint embedding, but **not** for the fast **SVD + shared-neighbour** hybrid under this strict masking. Strong **PR** and **ranking** gains relative to ROC reflect extreme class imbalance (almost all pairs are absent); they still indicate that **LightGCN** places many held-out positives in the **top few percent** of row-wise candidates. This supports **inference (i):** recoverable **graph regularities** exist in LncRNADisease v3 for human lncRNAs under edge supervision; **inference (ii):** capturing them **requires** a model that propagates structure **non-trivially**, not the hybrid baseline alone.
+
+### B. Hubs, categories, and what top “novel” scores may reflect
+
+The matrix is **sparse for most nodes** but **heavy-tailed**: a handful of lncRNAs (e.g. MALAT1, NEAT1, H19, …) and diseases (many **Neoplasm** rows, plus a few large non-cancer hubs) absorb a large share of edges. **Highest-scoring absent pairs** can therefore **enrich** for the same **keyword disease classes** or **degree product** as the positives simply because the training graph is **lopsided**, even when held-out **prediction** is good.
+
+### Inference about annotation pressure and popularity bias
+
+**Keyword categories** (especially **`Neoplasm`**) are **coarse**; overlap between top novel pairs and positive-edge categories is **consistent with both** concentrated cancer biology **and** **reporting bias**. The **category** and **hub-degree** scripts do not separate those causes; they **measure** how much top absent pairs resemble positives in category mix and in **lncRNA degree × disease degree** versus random absent pairs.
+
+**Takeaway:** **LightGCN’s** strong held-out metrics **do not** imply that **Flask** top-k lists are free of **hub** or **annotation** effects on the **full** graph. **Inference (iii):** treat **global** ranking on the complete matrix as **complementary** to hold-out metrics—use the audits to **bound** how much top scores **track celebrity endpoints** and **Neoplasm-heavy** keyword buckets. **Inference (iv):** the degree tables identify **which symbols and disease names** mechanically dominate edge counts, so **expected** pressure points for any graph-based scorer are **explicit**, not hidden.
 
 ### What the ingested graph actually looks like
 
@@ -150,26 +159,26 @@ Stable internal IDs for these diseases live in [`data/diseases.csv`](data/diseas
 python scripts/list_hub_entities.py --data-dir data --top 25
 ```
 
-Scripts and plots for this second check are in [Biology vs annotation bias (scripts)](#biology-vs-annotation-bias-scripts).
+Scripts and plots for this second line of evidence are in [Biology vs annotation bias (scripts)](#biology-vs-annotation-bias-scripts).
 
-**In short:** the **LOO / hold-out curves** ask whether **the graph supports prediction**. The **category and hub checks** ask whether **top guesses mirror how lopsided the database is**. You want both: neither answer is final on its own, but together they separate **“structure in the data”** from **“bias in how the data was collected.”**
+**Synthesis:** **Hold-out** results support **usable link signal** under masking when using **LightGCN**, not the hybrid baseline. **Bias audits** bound how much **top novel scores** align with **hub degree** and **keyword category skew** inherited from the database. Together, they separate **predictive structure in the observed graph** from **structural lopsidedness of the curation itself**; neither line alone replaces external validation.
 
 ---
 
 ## Evaluation & figures
 
-### Hold-out link prediction (recommended)
+### Hold-out link prediction (primary: complete dataset)
 
-We randomly put **85%** of known links in **training** and **15%** in a **test** set (default seed **42**). The model never sees the test links during training. We then score each **test link** against random **decoy** diseases for the same lncRNA and plot **ROC** and **precision–recall** in [`figures/`](figures/).
+We randomly put **85%** of known links in **training** and **15%** in a **test** set (default seed **42**). The split is over **all** positive edges in the loaded matrix—**no** subsampling of positives for the split itself. The model never sees the test links during training. We then score **each test positive** against random **decoy** diseases for the same lncRNA and plot **ROC** and **precision–recall** in [`figures/`](figures/). With `--ranking-report`, ranking metrics use **all** held-out positives that pass the candidate filter (see script docstring).
 
-**Reference numbers** on the full v3 ingest (same split, seed 42):
+**Reference numbers** on the **full** v3 human ingest in `data/` (same split, seed 42; complete train/test partition of all **10,518** edges):
 
 | Model | AUROC | AUPR | MRR | HR@10 | HR@50 |
 |--------|-------|------|-----|-------|-------|
 | Hybrid | 0.427 | 0.034 | 0.007 | 0.3% | 1.7% |
 | LightGCN (dim 64, 3 layers, 120 epochs) | **0.734** | **0.282** | **0.201** | **41%** | **62%** |
 
-With `--ranking-report` we also ask: for each hidden link, **what rank** is the true disease among all diseases **not** already linked to that lncRNA in training? When almost everything is a “no link,” **PR** and these **rank** numbers are often easier to read than ROC alone.
+With `--ranking-report`, each held-out positive gets a **rank** among diseases with **no** training edge to that lncRNA (full row-wise candidate list where applicable). Because almost all pairs are absent, **PR** and **MRR / HR@K** summarize **precision in the head of the ranked list** more directly than ROC alone; the table above shows **LightGCN** achieves **meaningful** top-10 and top-50 hit rates under that definition, whereas the hybrid does **not**.
 
 <p align="center">
   <img src="figures/holdout_roc.png" alt="Hold-out ROC hybrid" width="45%" />
@@ -189,19 +198,31 @@ python scripts/eval_loo_link_prediction.py --data-dir data --protocol holdout --
   --roc-name holdout_lightgcn_roc.png --pr-name holdout_lightgcn_pr.png --out-dir figures
 ```
 
-### Leave-one-out (subsampled)
+### Leave-one-out (optional; not the primary table)
 
-One refit per held-out positive is expensive. Example: **`--loo-threshold 350`** (figures in `figures/loo_*.png`). Use `--all-loo` only on small graphs.
+LOO refits the scorer after **removing each evaluated positive** in turn. On this graph, **full** LOO means **~10,518** refits per model—feasible for **hybrid / SVD** (no long neural training), but usually **too slow** for **MF / GNN / LightGCN** unless you use very few epochs per refit.
+
+- **Complete-dataset LOO:** pass **`--all-loo`** (and omit a restrictive `--loo-threshold`) so **every** positive is evaluated; use **`--model hybrid`** or **`--model svd`** for tractable runs, or tiny `examples/minimal_data/`.
+- **Subsampled LOO** (e.g. **`--loo-threshold 350`**): only for quick illustrations; **do not** treat it as equivalent to the full hold-out numbers above.
 
 ```bash
+# Example: subsampled LOO (fast illustration only)
 python scripts/eval_loo_link_prediction.py --data-dir data --protocol loo --loo-threshold 350 --seed 42 --out-dir figures
+
+# Example: complete-dataset LOO on every positive (use hybrid/svd unless you accept very long runs)
+python scripts/eval_loo_link_prediction.py --data-dir data --protocol loo --all-loo --model hybrid --seed 42 --out-dir figures
 ```
+
+<p align="center">
+  <img src="figures/loo_roc.png" alt="Leave-one-out ROC (optional subsample)" width="45%" />
+  <img src="figures/loo_pr.png" alt="Leave-one-out PR (optional subsample)" width="45%" />
+</p>
 
 ---
 
 ## Biology vs annotation bias (scripts)
 
-These scripts support **question 2** above: “Are we just rediscovering busy topics and hub nodes?”
+These scripts implement **line of evidence B** above: they **quantify overlap** between **top-scoring absent pairs** and **positive edges** in **keyword category mix** and in **endpoint degree**, with **random** absent pairs and the **disease pool** as references.
 
 ### What ails this approach (honest limits)
 
@@ -213,14 +234,14 @@ Cross-check the **degree tables** in [The biological question](#the-biological-q
 
 - **lncRNA hubs (symbols):** **MALAT1**, **NEAT1**, **H19**, **PVT1**, **GAS5**, **MEG3**, **HOTAIR**, **TUG1**, **XIST**, **UCA1**, and **SNHG**-family lncRNAs (**SNHG1**, **SNHG5**, **SNHG6**, **SNHG7**, **SNHG16**, …)—a small set of famous transcripts accounts for a disproportionate share of edges, so any scorer that uses graph structure will keep “meeting” them.
 - **Disease hubs (names):** **Esophageal Squamous Cell Carcinoma**, **Atrial Fibrillation**, **Stomach Neoplasms**, **Hepatocellular Carcinoma**, **Colorectal Neoplasms**, **Breast Neoplasms**, **NSCLC**, **Glioma**, and other **high-degree cancer rows**—one disease node can link to **hundreds or thousands** of lncRNAs in the matrix, so predictions and training loss are pulled toward those rows.
-- **Category keyword that dominates:** **`Neoplasm`** (plus, to a lesser extent, **`Cardiovascular`**, **`Immune_inflammatory`**, **`Other`**) in our ingest’s **keyword** field—**not** a formal ontology. When top novel pairs **enrich** for the same bucket as the positives, we cannot tell from the graph alone whether that is **biology** or **annotation density**; the scripts only flag the **overlap**.
+- **Category keyword that dominates:** **`Neoplasm`** (plus, to a lesser extent, **`Cardiovascular`**, **`Immune_inflammatory`**, **`Other`**) in our ingest’s **keyword** field—**not** a formal ontology. **Enrichment** of top novel pairs in the same bucket as positives is **ambiguous** from graph data alone (**biology** vs **annotation density**); the scripts **surface the overlap** without disentangling the source.
 
-The **hub degree audit** tests whether top-scoring **absent** edges have **higher lncRNA degree × disease degree** than random absent edges—i.e. whether we are effectively betting on **celebrity endpoints**. The **category audit** tests whether those pairs **pile into the same keyword classes** (especially **Neoplasm**) as the labeled edges.
+The **hub degree audit** **compares** the **lncRNA degree × disease degree** of top-scoring **absent** edges to **random** absent edges—a proxy for **celebrity-endpoint** concentration. The **category audit** **compares** the **keyword-class histogram** of those top pairs to **labeled edges**, with **Neoplasm** as the usual dominant class in positives.
 
 | Script | What it does |
 |--------|----------------|
 | [`scripts/category_bias_audit.py`](scripts/category_bias_audit.py) | Looks at the **disease type mix** among the **top predicted new links** and compares it to (a) real links in the data and (b) all diseases. |
-| [`scripts/hub_degree_audit.py`](scripts/hub_degree_audit.py) | Compares **how “connected”** those top new links are (lncRNA degree × disease degree) to **random** non-links. High scores may mean the model likes **celebrity** nodes. Optional `--checkpoint` uses **LightGCN** scores instead of the hybrid model. |
+| [`scripts/hub_degree_audit.py`](scripts/hub_degree_audit.py) | Compares **how “connected”** those top new links are (lncRNA degree × disease degree) to **random** non-links. **High** degree products on top pairs indicate **concentration** on **hub-like** endpoints. Optional `--checkpoint` uses **LightGCN** scores instead of the hybrid model. |
 
 <p align="center">
   <img src="figures/category_novel_enrichment.png" alt="Category mix" width="48%" />
