@@ -11,11 +11,12 @@ Predict and explore **lncRNA–disease** links by treating curated databases as 
 1. [Quick start](#quick-start)
 2. [Data: LncRNADisease v3.0](#data-lncrnadisease-v30)
 3. [Models (joint embeddings)](#models-joint-embeddings)
-4. [Evaluation & figures](#evaluation--figures)
-5. [Biology vs annotation bias](#biology-vs-annotation-bias)
-6. [Web portal (Flask)](#web-portal-flask)
-7. [Repository layout](#repository-layout)
-8. [Citation](#citation)
+4. [The biological question](#the-biological-question-graph-structure-vs-annotation-bias)
+5. [Evaluation & figures](#evaluation--figures)
+6. [Biology vs annotation bias (scripts)](#biology-vs-annotation-bias-scripts)
+7. [Web portal (Flask)](#web-portal-flask)
+8. [Repository layout](#repository-layout)
+9. [Citation](#citation)
 
 ---
 
@@ -74,6 +75,25 @@ All scoring uses **dot products** (or equivalent logits) between **lncRNA** and 
 
 ---
 
+## The biological question (graph structure vs annotation bias)
+
+The scientific target is **not** a single leaderboard number: it is whether **signal lives in the structure of the curated knowledge graph** or is mostly an artefact of **how and where the literature annotates** lncRNAs and diseases.
+
+**1. Does the graph support recovering hidden links?**  
+Treat the resource as a bipartite graph \(Y\). Under **strict masking**—**leave-one-out (LOO)** we remove one positive edge, refit the scorer on the rest, and ask whether that edge scores above random **non-edges** (same protocol pools labels for **ROC** and **precision–recall**). Good separation means **local structure** in the partial graph is **predictive** of the held entry; flat curves mean the model is not extracting recoverable association pattern from this graph alone (which may reflect **hard biology**, **curation noise**, or **model limits**—not necessarily “no biology”). LOO is expensive at full scale; this repo ships **subsampled LOO** curves (`figures/loo_roc.png`, `figures/loo_pr.png`) and recommends **hold-out** edge splits as a scalable parallel test with the same spirit (see [Evaluation & figures](#evaluation--figures)).
+
+<p align="center">
+  <img src="figures/loo_roc.png" alt="Leave-one-out ROC" width="45%" />
+  <img src="figures/loo_pr.png" alt="Leave-one-out PR" width="45%" />
+</p>
+
+**2. Are top “novel” hits just following annotation depth?**  
+Independently, take **high-scoring absent** pairs \((\text{lncRNA}, \text{disease})\) (edges with \(Y_{ij}=0)\). If their **disease categories** (or **degree / hub structure**) **mirror** the training graph’s positives—e.g. almost all predictions land on **neoplasm**-like labels because the database is **cancer-heavy**—then the ranking may be tracking **reporting bias** and **hub popularity** as much as mechanistic novelty. If the **category mix** (and **hub audit**) **diverges** from those baselines, the model is not merely reproducing the marginal of the corpus (interpret cautiously: real biology also clusters, and our categories are **keyword heuristics**, not MeSH). See [Biology vs annotation bias (scripts)](#biology-vs-annotation-bias-scripts) and the category figures below.
+
+**Together**, **masked-edge ROC/PR** probes **recoverable graph structure**; **category (and hub) summaries of top novel pairs** probe **annotation-shaped** behaviour. Neither is definitive alone; both are standard sanity checks when asking whether predictions reflect **structure in the knowledge graph** versus **bias in how that graph was built**.
+
+---
+
 ## Evaluation & figures
 
 ### Hold-out link prediction (recommended)
@@ -117,7 +137,9 @@ python scripts/eval_loo_link_prediction.py --data-dir data --protocol loo --loo-
 
 ---
 
-## Biology vs annotation bias
+## Biology vs annotation bias (scripts)
+
+Concrete checks for the **annotation / hub** side of [the biological question](#the-biological-question-graph-structure-vs-annotation-bias) above.
 
 | Script | Question |
 |--------|----------|
