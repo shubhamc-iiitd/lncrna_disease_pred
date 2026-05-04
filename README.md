@@ -60,8 +60,8 @@ python scripts/eval_loo_link_prediction.py --data-dir data --out-dir figures --n
 ## Quick start (clone from GitHub)
 
 ```bash
-git clone <your-repo-url>
-cd huang_assignment
+git clone https://github.com/shubhamc-iiitd/lncrna_disease_pred.git
+cd lncrna_disease_pred
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
@@ -115,7 +115,7 @@ git init
 git add .
 git commit -m "Add Flask lncRNA–disease portal and LncRNADisease v3 ingest"
 git branch -M main
-git remote add origin https://github.com/<you>/<repo>.git
+git remote add origin https://github.com/shubhamc-iiitd/lncrna_disease_pred.git
 git push -u origin main
 ```
 
