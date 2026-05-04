@@ -203,6 +203,20 @@ python scripts/eval_loo_link_prediction.py --data-dir data --protocol loo --loo-
 
 These scripts support **question 2** above: “Are we just rediscovering busy topics and hub nodes?”
 
+### What ails this approach (honest limits)
+
+Our methods only see **curated positive links** in LncRNADisease plus **synthetic negatives** at evaluation time. They do **not** see full transcriptomics, pathways, or unpublished results. That already mixes **real co-regulation** with **what journals and curators chose to report**. On top of that, **link prediction and graph embeddings are not fair**: they propagate signal along edges, so **high-degree nodes** get richer updates and higher scores almost by construction. The **hybrid** ranker is especially sensitive to **shared-neighbour / co-occurrence** structure, which hubs distort. Even **LightGCN**, which generalizes much better on held-out links, can still **rank popular pairs highly** on the full graph—so we run the audits below. None of this is a bug in the code; it is the **cost of learning from a biased bipartite snapshot**.
+
+### Which entities and “terms” drive the bias here
+
+Cross-check the **degree tables** in [The biological question](#the-biological-question-graph-structure-vs-annotation-bias). In our default ingest, the risky pattern is:
+
+- **lncRNA hubs (symbols):** **MALAT1**, **NEAT1**, **H19**, **PVT1**, **GAS5**, **MEG3**, **HOTAIR**, **TUG1**, **XIST**, **UCA1**, and **SNHG**-family lncRNAs (**SNHG1**, **SNHG5**, **SNHG6**, **SNHG7**, **SNHG16**, …)—a small set of famous transcripts accounts for a disproportionate share of edges, so any scorer that uses graph structure will keep “meeting” them.
+- **Disease hubs (names):** **Esophageal Squamous Cell Carcinoma**, **Atrial Fibrillation**, **Stomach Neoplasms**, **Hepatocellular Carcinoma**, **Colorectal Neoplasms**, **Breast Neoplasms**, **NSCLC**, **Glioma**, and other **high-degree cancer rows**—one disease node can link to **hundreds or thousands** of lncRNAs in the matrix, so predictions and training loss are pulled toward those rows.
+- **Category keyword that dominates:** **`Neoplasm`** (plus, to a lesser extent, **`Cardiovascular`**, **`Immune_inflammatory`**, **`Other`**) in our ingest’s **keyword** field—**not** a formal ontology. When top novel pairs **enrich** for the same bucket as the positives, we cannot tell from the graph alone whether that is **biology** or **annotation density**; the scripts only flag the **overlap**.
+
+The **hub degree audit** tests whether top-scoring **absent** edges have **higher lncRNA degree × disease degree** than random absent edges—i.e. whether we are effectively betting on **celebrity endpoints**. The **category audit** tests whether those pairs **pile into the same keyword classes** (especially **Neoplasm**) as the labeled edges.
+
 | Script | What it does |
 |--------|----------------|
 | [`scripts/category_bias_audit.py`](scripts/category_bias_audit.py) | Looks at the **disease type mix** among the **top predicted new links** and compares it to (a) real links in the data and (b) all diseases. |
