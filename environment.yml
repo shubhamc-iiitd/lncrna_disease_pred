@@ -1,0 +1,69 @@
+name: huang_task
+channels:
+  - conda-forge
+  - bioconda
+  - pytorch
+  - defaults
+
+dependencies:
+  # Core Python
+  - python=3.10
+  - pip
+
+  # Scientific computing
+  - numpy
+  - pandas
+  - scipy
+
+  # ML / AI
+  - scikit-learn
+  - xgboost
+  - lightgbm
+
+  # Deep Learning (CPU version; safer for interview)
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cpuonly
+
+  # Parallel / large-scale
+  - dask
+  - joblib
+
+  # Bioinformatics (Python)
+  - biopython
+  - pysam
+  - pyfaidx
+
+  # Genomics CLI tools (lightweight, safe)
+  - samtools
+  - bcftools
+  - bedtools
+  - htslib
+
+  # QC tools
+  - fastqc
+  - multiqc
+
+  # Utilities
+  - tqdm
+  - click
+  - pyyaml
+  - flask
+
+  # Visualization
+  - matplotlib
+  - seaborn
+
+  # Notebook
+  - jupyterlab
+
+  # Dev tools
+  - black
+  - flake8
+
+  # Pip-only packages
+  - pip:
+      - mlflow
+      - wandb
+      - pyBigWig

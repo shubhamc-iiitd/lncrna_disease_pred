@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+ENV/
+.env
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+.DS_Store
+
+# Large downloaded v3.0 dumps (regenerate with scripts/fetch_lncrnadisease_v30.py)
+data/raw/*.csv
+data/raw/*.tsv
+data/raw/*.xlsx
+
+# Full ingested graph (regenerate with scripts/ingest_lncrnadisease_v30.py)
+/data/associations.csv
+/data/diseases.csv
+/data/lncrnas.csv

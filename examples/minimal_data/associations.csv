@@ -1,0 +1,12 @@
+lncrna_id,disease_id,lncrna_name,disease_name,category
+HS:HOTAIR,Ddemo001,HOTAIR,Breast Neoplasms,Neoplasm
+HS:HOTAIR,Ddemo004,HOTAIR,"Carcinoma, Hepatocellular",Neoplasm
+HS:H19,Ddemo001,H19,Breast Neoplasms,Neoplasm
+HS:MALAT1,Ddemo001,MALAT1,Breast Neoplasms,Neoplasm
+HS:MALAT1,Ddemo004,MALAT1,"Carcinoma, Hepatocellular",Neoplasm
+HS:NEAT1,Ddemo004,NEAT1,"Carcinoma, Hepatocellular",Neoplasm
+HS:HOTTIP,Ddemo004,HOTTIP,"Carcinoma, Hepatocellular",Neoplasm
+HS:GAS5,Ddemo002,GAS5,Alzheimer Disease,Neurological_or_vascular_brain
+HS:H19,Ddemo002,H19,Alzheimer Disease,Neurological_or_vascular_brain
+HS:UCA1,Ddemo003,UCA1,Diabetes Mellitus,Metabolic
+HS:XIST,Ddemo001,XIST,Breast Neoplasms,Neoplasm

@@ -1,0 +1,108 @@
+:root {
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #f6f7fb;
+}
+
+body {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+header h1 {
+  font-size: 1.35rem;
+  margin: 0 0 0.5rem;
+}
+
+.meta, .note {
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.note {
+  margin-top: 0.5rem;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1.25rem 0;
+}
+
+select {
+  min-width: 18rem;
+  padding: 0.35rem 0.5rem;
+}
+
+button {
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status {
+  color: #a30;
+}
+
+.hidden {
+  display: none;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+th, td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid #e8e8ef;
+}
+
+th {
+  background: #eef0f7;
+  font-size: 0.85rem;
+}
+
+tr.is-known {
+  background: #f0fff4;
+}
+
+.pill.known {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border-radius: 4px;
+  background: #d4edda;
+  font-size: 0.8rem;
+}
+
+.card {
+  background: #fff;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+pre {
+  overflow: auto;
+  background: #1e1e1e;
+  color: #e8e8e8;
+  padding: 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+code {
+  font-size: 0.88em;
+}

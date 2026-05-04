@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Setup — lncRNA–disease ranker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Setup required</h1>
+    <p>No association tables found in <code>{{ missing_dir }}</code>.</p>
+  </header>
+  <section class="card">
+    <h2>Option A — bundled demo (default after clone)</h2>
+    <p>Ensure the folder <code>examples/minimal_data/</code> exists in the repository and contains <code>associations.csv</code>, <code>diseases.csv</code>, and <code>lncrnas.csv</code>.</p>
+  </section>
+  <section class="card">
+    <h2>Option B — LncRNADisease v3.0</h2>
+    <pre>cd {{ root }}
+python scripts/fetch_lncrnadisease_v30.py
+python scripts/ingest_lncrnadisease_v30.py
+export LNC_DATA_DIR={{ root }}/data
+python run_flask.py</pre>
+  </section>
+</body>
+</html>

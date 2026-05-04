@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>lncRNA–disease ranker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>lncRNA–disease candidates</h1>
+    <p class="meta">
+      {{ n_lnc }} lncRNAs · {{ n_dis }} diseases · {{ n_edges }} edges · data: <code>{{ data_dir }}</code>
+    </p>
+    <p class="note">
+      Rankings use a truncated SVD factorization of the bipartite graph (exploratory, not a clinical claim).
+      Rows marked <span class="pill known">known</span> are already present in the loaded association table.
+    </p>
+  </header>
+
+  <section class="controls">
+    <label for="disease">Disease</label>
+    <select id="disease">
+      <option value="">— choose —</option>
+      {% for d in diseases %}
+      <option value="{{ d.id }}">{{ d.name }} ({{ d.category }})</option>
+      {% endfor %}
+    </select>
+    <button type="button" id="go" disabled>Rank lncRNAs</button>
+  </section>
+
+  <section id="status" class="status hidden"></section>
+
+  <section id="results" class="hidden">
+    <h2 id="dtitle"></h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>lncRNA</th><th>ID</th><th>Score</th><th>Link</th></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </section>
+
+  <script>
+    const sel = document.getElementById('disease');
+    const go = document.getElementById('go');
+    const status = document.getElementById('status');
+    const results = document.getElementById('results');
+    const tbody = document.getElementById('tbody');
+    const dtitle = document.getElementById('dtitle');
+
+    sel.addEventListener('change', () => { go.disabled = !sel.value; });
+
+    go.addEventListener('click', async () => {
+      const disease_id = sel.value;
+      if (!disease_id) return;
+      status.classList.remove('hidden');
+      status.textContent = 'Loading…';
+      results.classList.add('hidden');
+      try {
+        const r = await fetch('/api/rank?disease_id=' + encodeURIComponent(disease_id) + '&top=75');
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        dtitle.textContent = data.disease_name + ' · ' + (data.category || '');
+        tbody.innerHTML = '';
+        data.results.forEach((row, idx) => {
+          const tr = document.createElement('tr');
+          if (row.known) tr.classList.add('is-known');
+          const pub = 'https://pubmed.ncbi.nlm.nih.gov/?term=' + encodeURIComponent(row.name + ' AND long non-coding RNA');
+          tr.innerHTML = '<td>' + (idx + 1) + '</td><td>' + row.name + '</td><td><code>' + row.lncrna_id + '</code></td><td>' + row.score.toFixed(4) + '</td><td><a href="' + pub + '" target="_blank" rel="noopener">PubMed search</a></td>';
+          tbody.appendChild(tr);
+        });
+        status.textContent = '';
+        status.classList.add('hidden');
+        results.classList.remove('hidden');
+      } catch (e) {
+        status.textContent = 'Error: ' + e;
+      }
+    });
+  </script>
+</body>
+</html>

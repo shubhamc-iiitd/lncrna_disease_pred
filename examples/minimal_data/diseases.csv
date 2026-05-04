@@ -1,0 +1,5 @@
+disease_id,disease_name,category
+Ddemo001,Breast Neoplasms,Neoplasm
+Ddemo002,Alzheimer Disease,Neurological_or_vascular_brain
+Ddemo003,Diabetes Mellitus,Metabolic
+Ddemo004,"Carcinoma, Hepatocellular",Neoplasm
